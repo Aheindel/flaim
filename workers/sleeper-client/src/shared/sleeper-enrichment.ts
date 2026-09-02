@@ -1,4 +1,4 @@
-import type { Env, Sport, SleeperLeagueUser } from '../types';
+import type { Env, Sport, SleeperLeagueUser, SleeperRoster } from '../types';
 import { getSleeperPlayersIndex, type SleeperPlayerRecord } from './sleeper-players-cache';
 
 const SLEEPER_EMPTY_LINEUP_SLOT_ID = '0';
@@ -20,6 +20,9 @@ export interface SleeperUserDirectoryEntry {
   teamName: string;
 }
 
+export type SleeperUserIdentity = Pick<SleeperLeagueUser, 'user_id' | 'display_name' | 'metadata'>;
+export type SleeperOwnershipRoster = Pick<SleeperRoster, 'roster_id' | 'owner_id' | 'players'>;
+
 export interface SleeperPlayerEntry {
   id: string;
   name?: string;
@@ -27,6 +30,12 @@ export interface SleeperPlayerEntry {
   team?: string;
   /** True for Sleeper's "0" empty-lineup-slot sentinel; no name lookup is attempted for it. */
   empty?: true;
+}
+
+export interface SleeperLeagueOwnerInfo {
+  rosterId: number;
+  teamName: string | null;
+  ownerName: string | null;
 }
 
 function asNonEmptyString(value: unknown): string | undefined {
@@ -46,7 +55,7 @@ export function sleeperDefaultTeamName(displayName: string): string {
   return `Team ${displayName}`;
 }
 
-export function buildUserDirectory(users: SleeperLeagueUser[]): Map<string, SleeperUserDirectoryEntry> {
+export function buildUserDirectory(users: SleeperUserIdentity[]): Map<string, SleeperUserDirectoryEntry> {
   const directory = new Map<string, SleeperUserDirectoryEntry>();
   for (const user of users) {
     directory.set(user.user_id, {
@@ -55,6 +64,68 @@ export function buildUserDirectory(users: SleeperLeagueUser[]): Map<string, Slee
     });
   }
   return directory;
+}
+
+/**
+ * Builds a complete current-league player ownership map from Sleeper's live
+ * roster endpoint. roster.players includes starters, bench, reserve, and taxi
+ * membership, so a player missing from this map is unrostered in the selected
+ * league. Team and owner names are additive; a missing user-directory entry
+ * never changes the rostered/free-agent determination.
+ */
+export function buildSleeperLeagueOwnershipMap(
+  rosters: SleeperOwnershipRoster[],
+  users: SleeperUserIdentity[],
+): Map<string, SleeperLeagueOwnerInfo> {
+  const userDirectory = buildUserDirectory(users);
+  const ownership = new Map<string, SleeperLeagueOwnerInfo>();
+
+  for (const roster of rosters) {
+    const owner = userDirectory.get(roster.owner_id);
+    for (const playerId of roster.players ?? []) {
+      const normalizedPlayerId = String(playerId);
+      if (ownership.has(normalizedPlayerId)) continue;
+      ownership.set(normalizedPlayerId, {
+        rosterId: roster.roster_id,
+        teamName: owner?.teamName ?? null,
+        ownerName: owner?.displayName ?? null,
+      });
+    }
+  }
+
+  return ownership;
+}
+
+/**
+ * Adds selected-league ownership to a Sleeper player lookup while keeping
+ * Sleeper's unavailable market-percentage scope separate. Inactive identities
+ * are not labeled FREE_AGENT merely because they are absent from league
+ * rosters: Sleeper's player index includes retired/inactive records that may
+ * not be acquirable.
+ */
+export function enrichSleeperPlayerWithLeagueOwnership(
+  playerId: string,
+  active: boolean,
+  ownership: Map<string, SleeperLeagueOwnerInfo>,
+): {
+  league_status: 'ROSTERED' | 'FREE_AGENT' | null;
+  league_team_name: string | null;
+  league_owner_name: string | null;
+} {
+  const owner = ownership.get(playerId);
+  if (owner) {
+    return {
+      league_status: 'ROSTERED',
+      league_team_name: owner.teamName,
+      league_owner_name: owner.ownerName,
+    };
+  }
+
+  return {
+    league_status: active ? 'FREE_AGENT' : null,
+    league_team_name: null,
+    league_owner_name: null,
+  };
 }
 
 export interface ResolveSleeperPlayerEntriesOptions {

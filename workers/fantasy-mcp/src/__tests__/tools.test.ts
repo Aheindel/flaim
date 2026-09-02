@@ -2001,6 +2001,9 @@ describe('fantasy-mcp tools', () => {
     expect(asZod(schema.count).parse(25)).toBe(25);
 
     expect(tool!.description).toContain('market/global ownership');
+    expect(tool!.description).toContain('without relying on a capped available-player list');
+    expect(tool!.description).toContain('Sleeper league_status is resolved from the live rosters');
+    expect(tool!.description).toContain('Never infer availability from ownership_scope');
     expect(tool!.description).toContain('league_status');
     expect(tool!.description).toContain('league_team_name');
     expect(tool!.description).toContain('league_owner_name');

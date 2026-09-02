@@ -8,6 +8,12 @@ Follow Keep a Changelog; stamp a version when submitting to directories.
 
 - **Added**: Flaim now accepts Littlebird's exact production OAuth callback for user-authorized custom MCP connections. The redirect remains exact-match only; other `lilbird.co` hosts, paths, query strings, and fragments are rejected.
 
+### Sleeper Named-Player Availability
+
+- **Fixed**: `get_players` now resolves arbitrary Sleeper player searches against every live roster in the selected league, returning `ROSTERED` with team/owner identity or `FREE_AGENT` for active unrostered players without depending on the alphabetically capped `get_free_agents` list.
+- **Guarded**: Sleeper roster/user API failures and malformed ownership payloads fail closed instead of asserting availability. Inactive unrostered identities return a null league status because the player index can include retired or otherwise non-acquirable records.
+- **Changed**: Exact normalized full-name matches are prioritized before the 25-result player-search cap, with punctuation and diacritics normalized for names such as Ja'Marr Chase.
+
 ## [9.0.0] - 2026-08-31
 
 ### Bounded Draft Results (FLA-318)
