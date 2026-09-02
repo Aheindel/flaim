@@ -93,6 +93,15 @@ describe('Flaim MCP initialization instructions', () => {
     expect(FLAIM_MCP_INSTRUCTIONS.indexOf('Hard stop:')).toBeGreaterThan(
       FLAIM_MCP_INSTRUCTIONS.indexOf('Do not include injuryStatus')
     );
+    expect(FLAIM_MCP_INSTRUCTIONS).toContain(
+      "For a named player's ownership or availability, use get_players rather than assuming the player must appear in get_free_agents's capped list"
+    );
+    expect(FLAIM_MCP_INSTRUCTIONS).toContain(
+      "On Sleeper, ownership_scope unavailable applies only to market percentages; league_status comes from the selected league's live rosters"
+    );
+    expect(FLAIM_MCP_INSTRUCTIONS).toContain(
+      'A null league_status is unverified, never proof of availability'
+    );
   });
 
   it('allows one bounded retry only for temporary failures', () => {

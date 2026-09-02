@@ -766,21 +766,34 @@ describe('get_players output schema', () => {
     }));
   });
 
-  it('accepts Sleeper identity-only entries (ownership unavailable)', () => {
+  it('accepts Sleeper live league ownership while market ownership remains unavailable', () => {
     expectValid('get_players', routed({
       platform: 'sleeper',
       sport: 'football',
+      league_id: 'sleeper-2026',
+      season_year: 2026,
       query: 'allen',
-      count: 1,
+      count: 2,
       players: [
         {
           id: '4034',
           name: 'Josh Allen',
           position: 'QB',
+          team: 'BUF',
+          market_percent_owned: null,
+          ownership_scope: 'unavailable',
+          league_status: 'ROSTERED',
+          league_team_name: 'Champions',
+          league_owner_name: 'Alice',
+        },
+        {
+          id: 'free-qb',
+          name: 'Allen Example',
+          position: 'QB',
           team: null,
           market_percent_owned: null,
           ownership_scope: 'unavailable',
-          league_status: null,
+          league_status: 'FREE_AGENT',
           league_team_name: null,
           league_owner_name: null,
         },

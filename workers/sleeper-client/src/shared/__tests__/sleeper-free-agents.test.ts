@@ -85,6 +85,41 @@ describe('buildSleeperPlayerSearch', () => {
     expect(result).toHaveLength(0);
   });
 
+  it('prioritizes an exact normalized full-name match before the 25-result cap', () => {
+    const crowded = new Map<string, SleeperPlayerRecord>();
+    for (let i = 0; i < 30; i += 1) {
+      const id = `similar-${i}`;
+      crowded.set(id, {
+        player_id: id,
+        full_name: `Patrick Mahomes Jr ${i}`,
+        active: true,
+      });
+    }
+    crowded.set('exact', {
+      player_id: 'exact',
+      full_name: 'Patrick Mahomes',
+      position: 'QB',
+      team: 'KC',
+      active: true,
+    });
+
+    expect(buildSleeperPlayerSearch(crowded, 'patrick mahomes', undefined, 1)[0]?.id).toBe('exact');
+  });
+
+  it('normalizes punctuation and diacritics in player names', () => {
+    const punctuated = new Map<string, SleeperPlayerRecord>([
+      ['chase', {
+        player_id: 'chase',
+        full_name: 'Ja’Marr Cháse',
+        position: 'WR',
+        team: 'CIN',
+        active: true,
+      }],
+    ]);
+
+    expect(buildSleeperPlayerSearch(punctuated, "Ja'Marr Chase")[0]?.id).toBe('chase');
+  });
+
   it('clamps count to 1..25', () => {
     const big = new Map<string, SleeperPlayerRecord>();
     for (let i = 0; i < 50; i += 1) {

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi, type MockedFunction } from 'vitest';
 import {
+  buildSleeperLeagueOwnershipMap,
   buildUserDirectory,
+  enrichSleeperPlayerWithLeagueOwnership,
   loadSleeperPlayersIndexForEnrichment,
   resolveSleeperPlayerEntries,
   SLEEPER_PLAYER_ENRICHMENT_WARNING,
@@ -70,6 +72,68 @@ describe('buildUserDirectory', () => {
     const directory = buildUserDirectory(users);
 
     expect(directory.get('u1')).toEqual({ displayName: 'Alice', teamName: 'Padded Wizards' });
+  });
+});
+
+describe('Sleeper selected-league ownership', () => {
+  const rosters = [
+    {
+      roster_id: 7,
+      owner_id: 'u1',
+      // Sleeper's roster.players is the complete membership set, including
+      // starters, bench, reserve, and taxi players.
+      players: ['starter', 'bench', 'reserve', 'taxi'],
+    },
+  ];
+  const users = [
+    { user_id: 'u1', display_name: 'Alice', metadata: { team_name: 'Champions' } },
+  ];
+
+  it('maps every live roster member to its fantasy team and owner', () => {
+    const ownership = buildSleeperLeagueOwnershipMap(rosters, users);
+
+    for (const playerId of ['starter', 'bench', 'reserve', 'taxi']) {
+      expect(ownership.get(playerId)).toEqual({
+        rosterId: 7,
+        teamName: 'Champions',
+        ownerName: 'Alice',
+      });
+    }
+  });
+
+  it('keeps inactive players rostered when the live roster contains them', () => {
+    const ownership = buildSleeperLeagueOwnershipMap(rosters, users);
+
+    expect(enrichSleeperPlayerWithLeagueOwnership('reserve', false, ownership)).toEqual({
+      league_status: 'ROSTERED',
+      league_team_name: 'Champions',
+      league_owner_name: 'Alice',
+    });
+  });
+
+  it('marks active unrostered players available but leaves inactive identities unverified', () => {
+    const ownership = buildSleeperLeagueOwnershipMap(rosters, users);
+
+    expect(enrichSleeperPlayerWithLeagueOwnership('active-free', true, ownership)).toEqual({
+      league_status: 'FREE_AGENT',
+      league_team_name: null,
+      league_owner_name: null,
+    });
+    expect(enrichSleeperPlayerWithLeagueOwnership('retired', false, ownership)).toEqual({
+      league_status: null,
+      league_team_name: null,
+      league_owner_name: null,
+    });
+  });
+
+  it('does not lose a rostered determination when the user directory is incomplete', () => {
+    const ownership = buildSleeperLeagueOwnershipMap(rosters, []);
+
+    expect(enrichSleeperPlayerWithLeagueOwnership('bench', true, ownership)).toEqual({
+      league_status: 'ROSTERED',
+      league_team_name: null,
+      league_owner_name: null,
+    });
   });
 });
 
